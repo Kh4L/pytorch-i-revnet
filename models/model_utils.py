@@ -35,7 +35,7 @@ class injective_pad(nn.Module):
     def inverse(self, x):
         return x[:, :x.size(1) - self.pad_size, :, :]
 
-
+# Illustraded by Fig2 of the paper: invertible downsampling
 class psi(nn.Module):
     def __init__(self, block_size):
         super(psi, self).__init__()
@@ -63,8 +63,10 @@ class psi(nn.Module):
         t_1 = output.split(self.block_size, 2)
         stack = [t_t.contiguous().view(batch_size, d_height, d_depth) for t_t in t_1]
         output = torch.stack(stack, 1)
-        output = output.permute(0, 2, 1, 3)
-        output = output.permute(0, 3, 1, 2)
+        # TODO(spanev): only one perm to go back to NHWC
+        # output = output.permute(0, 2, 1, 3)
+        # output = output.permute(0, 3, 1, 2)
+        ouput = output.permute(0, 3, 1, 2)
         return output.contiguous()
 
 

@@ -80,7 +80,7 @@ def get_hms(seconds):
     return h, m, s
 
 
-def train(model, trainloader, trainset, epoch, num_epochs, batch_size, lr, use_cuda, in_shape):
+def train(model, trainloader, epoch_size, epoch, num_epochs, batch_size, lr, use_cuda, in_shape):
     model.train()
     train_loss = 0
     correct = 0
@@ -110,11 +110,11 @@ def train(model, trainloader, trainset, epoch, num_epochs, batch_size, lr, use_c
         sys.stdout.write('\r')
         sys.stdout.write('| Epoch [%3d/%3d] Iter[%3d/%3d]\t\tLoss: %.4f Acc@1: %.3f%%'
                          % (epoch, num_epochs, batch_idx+1,
-                            (len(trainset)//batch_size)+1, loss.data[0], 100.*correct/total))
+                            (epoch_size//batch_size)+1, loss.data[0], 100.*correct/total))
         sys.stdout.flush()
 
 
-def test(model, testloader, testset, epoch, use_cuda, best_acc, dataset, fname):
+def test(model, testloader, epoch_size, epoch, use_cuda, best_acc, dataset, fname):
     model.eval()
     test_loss = 0
     correct = 0

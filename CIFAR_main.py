@@ -39,9 +39,6 @@ import torch
 import torch.backends.cudnn as cudnn
 from torch.autograd import Variable
 
-import torchvision
-import torchvision.transforms as transforms
-
 import os
 import sys
 import time
@@ -49,6 +46,7 @@ import argparse
 
 from models.utils_cifar import train, test, std, mean, get_hms
 from models.iRevNet import iRevNet
+from dataloader import get_loader
 
 
 parser = argparse.ArgumentParser(description='Train i-RevNet/RevNet on Cifar')
@@ -66,36 +64,15 @@ parser.add_argument('--resume', default='', type=str, metavar='PATH',
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
 parser.add_argument('--dataset', default='cifar10', type=str, help='dataset')
-
+parser.add_argument('--dali', action='store_true',
+                    help='Use NVIDIA DALI for dataloading and preprocessing')
 
 def main():
     args = parser.parse_args()
 
-    transform_train = transforms.Compose([
-        transforms.RandomCrop(32, padding=4),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize(mean[args.dataset], std[args.dataset]),
-    ])
-
-    transform_test = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(mean[args.dataset], std[args.dataset]),
-    ])
-
-    if(args.dataset == 'cifar10'):
-        trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_train)
-        testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=False, transform=transform_test)
-        nClasses = 10
-        in_shape = [3, 32, 32]
-    elif(args.dataset == 'cifar100'):
-        trainset = torchvision.datasets.CIFAR100(root='./data', train=True, download=True, transform=transform_train)
-        testset = torchvision.datasets.CIFAR100(root='./data', train=False, download=False, transform=transform_test)
-        nClasses = 100
-        in_shape = [3, 32, 32]
-
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=args.batch, shuffle=True, num_workers=2)
-    testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False, num_workers=2)
+    loader = 'dali' if args.dali else 'default'
+    trainloader, train_epoch_size = get_loader_cifar(loader, 'train', args.dataset)
+    testloader, test_epoch_size = get_loader_cifar(loader, 'test', args.dataset)
 
     def get_model(args):
         if (args.model == 'i-revnet'):
@@ -133,7 +110,7 @@ def main():
             print("=> no checkpoint found at '{}'".format(args.resume))
 
     if args.evaluate:
-        test(model, testloader, testset, start_epoch, use_cuda, best_acc, args.dataset, fname)
+        test(model, testloader, test_epoch_size, start_epoch, use_cuda, best_acc, args.dataset, fname)
         return
 
     print('|  Train Epochs: ' + str(args.epochs))
@@ -144,8 +121,8 @@ def main():
     for epoch in range(1, 1+args.epochs):
         start_time = time.time()
 
-        train(model, trainloader, trainset, epoch, args.epochs, args.batch, args.lr, use_cuda, in_shape)
-        best_acc = test(model, testloader, testset, epoch, use_cuda, best_acc, args.dataset, fname)
+        train(model, trainloader, train_epoch_size, epoch, args.epochs, args.batch, args.lr, use_cuda, in_shape)
+        best_acc = test(model, testloader, test_epoch_size, epoch, use_cuda, best_acc, args.dataset, fname)
 
         epoch_time = time.time() - start_time
         elapsed_time += epoch_time
